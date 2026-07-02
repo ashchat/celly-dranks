@@ -431,7 +431,7 @@
 <body>
 
   <div class="hero">
-    <div class="passport-no">Guest Passport — Party of Ten</div>
+    <div class="passport-no">Celebratory Cocktail Tasting</div>
     <h1>The Full House<br><em>Flight</em></h1>
     <div class="sub">Tap Each Stop As You Taste It</div>
     <div class="instructions">You're on a 4-stop tasting flight tonight. Order matters — light and bubbly first, dessert last. Stamp each one as you try it, then rate it 1-5 below.</div>
@@ -617,6 +617,7 @@
   </div>
 
   <footer>Cheers, From The Whole Crew</footer>
+  <div id="debug-info" style="text-align:center;font-family:'Space Mono',monospace;font-size:9px;opacity:0.35;padding:0 20px 20px;word-break:break-all;"></div>
 
 <script>
   const firebaseConfig = {
@@ -687,6 +688,22 @@
   }
   updateProgress();
   reorderRecipes();
+
+  // visible diagnostic — safe to remove later, just for tonight's troubleshooting
+  (function showDebug(){
+    let storageTest = 'unknown';
+    try{
+      localStorage.setItem('__test__','1');
+      storageTest = (localStorage.getItem('__test__') === '1') ? 'working' : 'writes but reads wrong';
+      localStorage.removeItem('__test__');
+    }catch(e){
+      storageTest = 'BLOCKED — ' + e.message;
+    }
+    const el = document.getElementById('debug-info');
+    if(el){
+      el.textContent = 'storage: ' + storageTest + ' | saved stamps: ' + (safeGet('partyStamps') || 'none') + ' | guestId: ' + guestId;
+    }
+  })();
 
   function toggleStamp(n){
     const card = document.getElementById('card-'+n);
