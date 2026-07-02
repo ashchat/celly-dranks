@@ -501,9 +501,10 @@
 
     <div class="recipe">
       <h2>Take Them Home</h2>
-      <div class="sub2">Single-Serving Recipes For All Four</div>
+      <div class="sub2" id="recipe-sub">Single-Serving Recipes For All Four</div>
 
-      <div class="recipe-card">
+      <div id="recipe-list">
+      <div class="recipe-card" id="recipe-1">
         <h4>1 — Hugo Spritz</h4>
         <ul>
           <li>3 oz Prosecco</li>
@@ -521,7 +522,7 @@
         </ol>
       </div>
 
-      <div class="recipe-card">
+      <div class="recipe-card" id="recipe-2">
         <h4>2 — Green Card Margarita</h4>
         <ul>
           <li>2 oz mezcal or tequila</li>
@@ -538,7 +539,7 @@
         </ol>
       </div>
 
-      <div class="recipe-card">
+      <div class="recipe-card" id="recipe-3">
         <h4>3 — Firework Cubes</h4>
         <ul>
           <li>1 small box (3oz) flavored Jell-O (red or blue)</li>
@@ -554,7 +555,7 @@
         </ol>
       </div>
 
-      <div class="recipe-card">
+      <div class="recipe-card" id="recipe-4">
         <h4>4 — Espresso Float</h4>
         <ul>
           <li>1.5 oz vodka</li>
@@ -568,6 +569,7 @@
           <li>Shake vodka, coffee liqueur, and cooled decaf hard with ice.</li>
           <li>Pour over the ice cream tableside so it foams up like a float.</li>
         </ol>
+      </div>
       </div>
     </div>
 
@@ -631,9 +633,26 @@
 
   const PASSWORD = "parmy";
   const names = {1:"Hugo Spritz", 2:"Green Card Margarita", 3:"Firework Cubes", 4:"Espresso Float"};
-  const countedStamps = {};
-  const guestId = 'g' + Math.random().toString(36).substring(2, 10);
-  const myRatings = {};
+
+  // ---- local persistence (per-device, survives refresh) ----
+  function safeGet(key){
+    try{ return localStorage.getItem(key); } catch(e){ return null; }
+  }
+  function safeSet(key, val){
+    try{ localStorage.setItem(key, val); } catch(e){ /* ignore, falls back to in-memory only */ }
+  }
+
+  let guestId = safeGet('partyGuestId');
+  if(!guestId){
+    guestId = 'g' + Math.random().toString(36).substring(2, 10);
+    safeSet('partyGuestId', guestId);
+  }
+
+  const countedStamps = JSON.parse(safeGet('partyStamps') || '{}');
+  const myRatings = JSON.parse(safeGet('partyRatings') || '{}');
+
+  function saveStamps(){ safeSet('partyStamps', JSON.stringify(countedStamps)); }
+  function saveRatings(){ safeSet('partyRatings', JSON.stringify(myRatings)); }
 
   // build rating buttons 1-5 for each drink
   for(let d=1; d<=4; d++){
@@ -646,6 +665,28 @@
       row.appendChild(btn);
     }
   }
+
+  // restore stamped cards + ratings from this device's last visit
+  for(let n=1; n<=4; n++){
+    if(countedStamps[n]){
+      const card = document.getElementById('card-'+n);
+      const stamp = document.getElementById('stamp-'+n);
+      const btn = card.querySelector('.stamp-btn');
+      stamp.classList.add('on');
+      card.classList.add('stamped');
+      btn.classList.add('done');
+      btn.textContent = 'Stamped ✓';
+    }
+    if(myRatings[n]){
+      const row = document.getElementById('rate-'+n);
+      Array.from(row.children).forEach((btn, idx) => {
+        btn.classList.toggle('selected', (idx+1) === myRatings[n]);
+      });
+      document.getElementById('yr-'+n).textContent = 'Your rating: ' + myRatings[n] + ' / 5';
+    }
+  }
+  updateProgress();
+  reorderRecipes();
 
   function toggleStamp(n){
     const card = document.getElementById('card-'+n);
@@ -661,6 +702,7 @@
 
       if(!countedStamps[n]){
         countedStamps[n] = true;
+        saveStamps();
         db.ref('tried/'+n).transaction(cur => (cur||0)+1);
       }
     } else {
@@ -692,6 +734,7 @@
 
   function submitRating(drinkId, rating){
     myRatings[drinkId] = rating;
+    saveRatings();
     db.ref('ratings/'+drinkId+'/'+guestId).set(rating);
 
     const row = document.getElementById('rate-'+drinkId);
@@ -699,6 +742,25 @@
       btn.classList.toggle('selected', (idx+1) === rating);
     });
     document.getElementById('yr-'+drinkId).textContent = 'Your rating: ' + rating + ' / 5';
+
+    reorderRecipes();
+  }
+
+  function reorderRecipes(){
+    const list = document.getElementById('recipe-list');
+    const cards = Array.from(list.children);
+    const hasAnyRating = cards.some(c => myRatings[c.id.split('-')[1]]);
+
+    document.getElementById('recipe-sub').textContent = hasAnyRating
+      ? 'Ranked By Your Ratings Tonight'
+      : 'Single-Serving Recipes For All Four';
+
+    cards.sort((a, b) => {
+      const ra = myRatings[a.id.split('-')[1]] || 0;
+      const rb = myRatings[b.id.split('-')[1]] || 0;
+      return rb - ra;
+    });
+    cards.forEach(c => list.appendChild(c));
   }
 
   function toggleHostPanel(){
