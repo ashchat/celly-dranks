@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Full House Flight — Guest Passport</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,900;1,600&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --paper:#F5EFDE;
+    --paper-dark:#EAE0C6;
+    --ink:#1E2A44;
+    --red:#B23A3A;
+    --blue:#3E5C86;
+    --gold:#B08A2E;
+    --green:#3E7050;
+    --line:#c9bd9a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(178,58,58,0.05), transparent 40%),
+      radial-gradient(circle at 80% 90%, rgba(62,92,134,0.06), transparent 40%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    line-height:1.5;
+    padding-bottom:40px;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:0 20px;}
+
+  .hero{
+    padding:40px 20px 28px;
+    text-align:center;
+    border-bottom:2px solid var(--ink);
+  }
+  .passport-no{
+    font-family:'Space Mono',monospace;
+    font-size:11px;
+    letter-spacing:2.5px;
+    color:var(--blue);
+    text-transform:uppercase;
+    margin-bottom:14px;
+  }
+  .hero h1{
+    font-family:'Playfair Display',serif;
+    font-weight:900;
+    font-size:clamp(1.9rem,9vw,2.6rem);
+    margin:0 0 6px;
+    letter-spacing:-0.5px;
+    line-height:1.05;
+  }
+  .hero h1 em{font-style:italic;color:var(--red);}
+  .hero .sub{
+    font-family:'Space Mono',monospace;
+    font-size:11.5px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    opacity:0.7;
+    margin-top:10px;
+  }
+  .instructions{
+    font-size:0.9rem;
+    margin-top:16px;
+    padding:12px 14px;
+    background:var(--paper-dark);
+    border-left:3px solid var(--gold);
+    text-align:left;
+  }
+
+  /* PROGRESS */
+  .progress-wrap{
+    padding:22px 20px;
+    border-bottom:2px dashed var(--line);
+  }
+  .progress-label{
+    display:flex;
+    justify-content:space-between;
+    font-family:'Space Mono',monospace;
+    font-size:11px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  #progress-count{color:var(--red); font-weight:700;}
+  .bar-track{
+    height:10px;
+    background:var(--paper-dark);
+    border:1px solid var(--ink);
+    border-radius:6px;
+    overflow:hidden;
+  }
+  .bar-fill{
+    height:100%;
+    width:0%;
+    background:linear-gradient(90deg,var(--red),var(--blue));
+    transition:width 0.5s ease;
+  }
+  #complete-msg{
+    display:none;
+    text-align:center;
+    font-family:'Playfair Display',serif;
+    font-style:italic;
+    font-size:1.1rem;
+    color:var(--green);
+    margin-top:14px;
+  }
+
+  /* DRINK CARDS */
+  .card{
+    position:relative;
+    border:1px solid var(--ink);
+    background:var(--paper);
+    margin:24px 20px;
+    padding:24px 22px;
+    box-shadow:4px 4px 0 rgba(30,42,68,0.08);
+    transition:box-shadow 0.3s ease, transform 0.3s ease;
+  }
+  .card.stamped{
+    box-shadow:4px 4px 0 rgba(62,112,80,0.15);
+    background:#F3F0E0;
+  }
+  .stamp-icon{
+    position:absolute;
+    top:-16px;
+    right:18px;
+    width:64px;height:64px;
+    border-radius:50%;
+    border:2.5px dashed var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-family:'Space Mono',monospace;
+    font-size:9px;
+    font-weight:700;
+    text-transform:uppercase;
+    background:var(--paper);
+    opacity:0.4;
+    transform:rotate(-8deg) scale(0.9);
+    transition:all 0.4s cubic-bezier(.17,.89,.32,1.49);
+  }
+  .stamp-icon.on{
+    opacity:1;
+    transform:rotate(-8deg) scale(1);
+    border-color:var(--green);
+    color:var(--green);
+    border-style:solid;
+  }
+  .card .num{
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--blue);
+    margin-bottom:6px;
+  }
+  .card h3{
+    font-family:'Playfair Display',serif;
+    font-size:1.5rem;
+    margin:0 0 4px;
+    max-width:78%;
+  }
+  .card .tagline{
+    font-style:italic;
+    color:var(--blue);
+    margin:0 0 16px;
+    font-size:0.9rem;
+  }
+  .card .desc{
+    font-size:0.92rem;
+    margin-bottom:14px;
+  }
+  .live-count{
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    color:var(--blue);
+    margin-bottom:16px;
+  }
+  .live-count .dot{
+    display:inline-block;
+    width:6px;height:6px;
+    border-radius:50%;
+    background:var(--red);
+    margin-right:6px;
+    animation:pulse 1.5s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+  .stamp-btn{
+    width:100%;
+    padding:12px;
+    font-family:'Space Mono',monospace;
+    font-size:12px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    font-weight:700;
+    border:2px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    border-radius:4px;
+    cursor:pointer;
+    transition:all 0.2s ease;
+    margin-bottom:16px;
+  }
+  .stamp-btn:active{transform:scale(0.97);}
+  .stamp-btn.done{
+    background:var(--green);
+    border-color:var(--green);
+    color:var(--paper);
+  }
+
+  /* RATING */
+  .rate-label{
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    opacity:0.6;
+    margin-bottom:8px;
+  }
+  .rate-row{
+    display:flex;
+    gap:8px;
+  }
+  .rate-btn{
+    flex:1;
+    padding:10px 0;
+    font-family:'Space Mono',monospace;
+    font-size:14px;
+    font-weight:700;
+    border:1.5px solid var(--ink);
+    background:var(--paper);
+    color:var(--ink);
+    border-radius:4px;
+    cursor:pointer;
+  }
+  .rate-btn.selected{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:var(--paper);
+  }
+  .your-rating{
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin-top:8px;
+    min-height:14px;
+  }
+
+  /* RECIPES */
+  .recipe{
+    margin:36px 20px 0;
+    border-top:2px solid var(--ink);
+    padding-top:28px;
+  }
+  .recipe h2{
+    font-family:'Playfair Display',serif;
+    text-align:center;
+    font-size:1.5rem;
+    margin-bottom:4px;
+  }
+  .recipe .sub2{
+    text-align:center;
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    opacity:0.6;
+    margin-bottom:22px;
+  }
+  .recipe-card{
+    border:1px solid var(--ink);
+    background:var(--paper);
+    padding:22px;
+    margin-top:18px;
+  }
+  .recipe-card:first-of-type{margin-top:0;}
+  .recipe-card h4{
+    font-family:'Space Mono',monospace;
+    font-size:11px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--red);
+    margin:0 0 10px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:6px;
+  }
+  .recipe-card ul{margin:0 0 18px;padding-left:18px;}
+  .recipe-card li{margin-bottom:5px;font-size:0.92rem;}
+  .recipe-card ol{margin:0;padding-left:18px;}
+  .recipe-card ol li{margin-bottom:8px;font-size:0.92rem;}
+
+  /* HOST RESULTS */
+  .host-toggle{
+    display:block;
+    width:100%;
+    text-align:center;
+    margin:32px 20px 0;
+    padding:12px;
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--ink);
+    background:none;
+    border:1px dashed var(--line);
+    border-radius:4px;
+    cursor:pointer;
+    opacity:0.6;
+  }
+  .host-toggle:hover{opacity:1;}
+
+  .host-panel{
+    display:none;
+    margin:0 20px;
+  }
+  .pw-box{
+    margin-top:16px;
+    text-align:center;
+    padding:20px;
+    border:1px solid var(--line);
+    background:var(--paper-dark);
+  }
+  .pw-box input{
+    font-family:'Space Mono',monospace;
+    font-size:13px;
+    padding:10px 14px;
+    border:2px solid var(--ink);
+    border-radius:4px;
+    background:var(--paper);
+    color:var(--ink);
+    text-align:center;
+    width:160px;
+    margin-right:8px;
+  }
+  .pw-box button{
+    font-family:'Space Mono',monospace;
+    font-size:11px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    font-weight:700;
+    padding:10px 18px;
+    border:2px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    border-radius:4px;
+    cursor:pointer;
+  }
+  .pw-error{
+    color:var(--red);
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    margin-top:10px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    display:none;
+  }
+
+  #dashboard{display:none; margin-top:20px;}
+  .leader-banner{
+    text-align:center;
+    padding:14px;
+    border:2px dashed var(--gold);
+    font-family:'Playfair Display',serif;
+    font-style:italic;
+    font-size:1.05rem;
+    color:var(--gold);
+    margin-bottom:20px;
+  }
+  .drink-block{
+    border:1px solid var(--ink);
+    background:var(--paper);
+    padding:20px;
+    margin-bottom:16px;
+    box-shadow:4px 4px 0 rgba(30,42,68,0.08);
+  }
+  .drink-block h4{
+    font-family:'Playfair Display',serif;
+    font-size:1.25rem;
+    margin:0 0 14px;
+  }
+  .stat-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:8px;
+  }
+  .stat-label{
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    opacity:0.6;
+  }
+  .stat-value{
+    font-family:'Playfair Display',serif;
+    font-weight:700;
+    font-size:1.4rem;
+  }
+  .stat-value.tried{color:var(--blue);}
+  .stat-value.avg{color:var(--red);}
+  .totals{
+    text-align:center;
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    opacity:0.6;
+    margin-top:8px;
+  }
+
+  footer{
+    text-align:center;
+    padding:32px 20px 10px;
+    font-family:'Space Mono',monospace;
+    font-size:10.5px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    opacity:0.5;
+  }
+</style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="passport-no">Guest Passport — Party of Ten</div>
+    <h1>The Full House<br><em>Flight</em></h1>
+    <div class="sub">Tap Each Stop As You Taste It</div>
+    <div class="instructions">You're on a 4-stop tasting flight tonight. Order matters — light and bubbly first, dessert last. Stamp each one as you try it, then rate it 1-5 below.</div>
+  </div>
+
+  <div class="wrap">
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>Passport Progress</span>
+        <span><span id="progress-count">0</span> / 4 Stamped</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" id="bar-fill"></div></div>
+      <div id="complete-msg">✦ Full House — You've cleared customs. ✦</div>
+    </div>
+
+    <div class="card" id="card-1">
+      <div class="stamp-icon" id="stamp-1">Stamped</div>
+      <div class="num">Stop No. 1 · Light &amp; Bubbly</div>
+      <h3>Hugo Spritz</h3>
+      <p class="tagline">Prosecco, St. Germain, soda, mint.</p>
+      <p class="desc">Elderflower and bubbles — the easy opener.</p>
+      <div class="live-count"><span class="dot"></span><span id="live-1">0</span> people have tried this</div>
+      <button class="stamp-btn" onclick="toggleStamp(1)">Stamp It</button>
+      <div class="rate-label">Rate It</div>
+      <div class="rate-row" id="rate-1"></div>
+      <div class="your-rating" id="yr-1"></div>
+    </div>
+
+    <div class="card" id="card-2">
+      <div class="stamp-icon" id="stamp-2">Stamped</div>
+      <div class="num">Stop No. 2 · Bold &amp; Spicy</div>
+      <h3>Green Card Margarita</h3>
+      <p class="tagline">Mezcal, blue curaçao, jalapeño-lime.</p>
+      <p class="desc">Spicy, smoky, and green for obvious reasons.</p>
+      <div class="live-count"><span class="dot"></span><span id="live-2">0</span> people have tried this</div>
+      <button class="stamp-btn" onclick="toggleStamp(2)">Stamp It</button>
+      <div class="rate-label">Rate It</div>
+      <div class="rate-row" id="rate-2"></div>
+      <div class="your-rating" id="yr-2"></div>
+    </div>
+
+    <div class="card" id="card-3">
+      <div class="stamp-icon" id="stamp-3">Stamped</div>
+      <div class="num">Stop No. 3 · The Reset</div>
+      <h3>Firework Cubes</h3>
+      <p class="tagline">Red &amp; blue jello, suspended in white.</p>
+      <p class="desc">A cold, boozy palate cleanser — fireworks in a jar.</p>
+      <div class="live-count"><span class="dot"></span><span id="live-3">0</span> people have tried this</div>
+      <button class="stamp-btn" onclick="toggleStamp(3)">Stamp It</button>
+      <div class="rate-label">Rate It</div>
+      <div class="rate-row" id="rate-3"></div>
+      <div class="your-rating" id="yr-3"></div>
+    </div>
+
+    <div class="card" id="card-4">
+      <div class="stamp-icon" id="stamp-4">Stamped</div>
+      <div class="num">Stop No. 4 · Dessert, Last</div>
+      <h3>Espresso Float</h3>
+      <p class="tagline">Decaf coffee martini over cinnamon ice cream.</p>
+      <p class="desc">Poured tableside so it foams up like a float.</p>
+      <div class="live-count"><span class="dot"></span><span id="live-4">0</span> people have tried this</div>
+      <button class="stamp-btn" onclick="toggleStamp(4)">Stamp It</button>
+      <div class="rate-label">Rate It</div>
+      <div class="rate-row" id="rate-4"></div>
+      <div class="your-rating" id="yr-4"></div>
+    </div>
+
+    <div class="recipe">
+      <h2>Take Them Home</h2>
+      <div class="sub2">Single-Serving Recipes For All Four</div>
+
+      <div class="recipe-card">
+        <h4>1 — Hugo Spritz</h4>
+        <ul>
+          <li>3 oz Prosecco</li>
+          <li>2 oz St. Germain (elderflower liqueur)</li>
+          <li>1 oz club soda</li>
+          <li>Fresh mint sprig, lime wheel</li>
+          <li>Ice</li>
+        </ul>
+        <ol>
+          <li>Fill a wine glass or tumbler with ice.</li>
+          <li>Pour in the Prosecco and St. Germain.</li>
+          <li>Top with club soda — pour gently to keep the bubbles.</li>
+          <li>One light stir, no more.</li>
+          <li>Garnish with mint and lime. Done.</li>
+        </ol>
+      </div>
+
+      <div class="recipe-card">
+        <h4>2 — Green Card Margarita</h4>
+        <ul>
+          <li>2 oz mezcal or tequila</li>
+          <li>1 oz blue curaçao</li>
+          <li>1 oz fresh lime juice</li>
+          <li>0.5 oz jalapeño-agave syrup*</li>
+          <li>Tajín, for the rim</li>
+        </ul>
+        <ol>
+          <li>Rim a rocks glass with lime juice and Tajín.</li>
+          <li>Shake mezcal, curaçao, lime juice, and syrup hard with ice.</li>
+          <li>Strain over fresh ice in the rimmed glass.</li>
+          <li>*For the syrup: simmer equal parts sugar and water with a few sliced jalapeños for 5 min, cool, strain.</li>
+        </ol>
+      </div>
+
+      <div class="recipe-card">
+        <h4>3 — Firework Cubes</h4>
+        <ul>
+          <li>1 small box (3oz) flavored Jell-O (red or blue)</li>
+          <li>1 cup boiling water</li>
+          <li>1 cup cold vodka</li>
+          <li>1/2 packet unflavored gelatin</li>
+          <li>1/2 cup sweetened condensed milk</li>
+        </ul>
+        <ol>
+          <li>Dissolve the flavored Jell-O in boiling water, stir in cold vodka, pour into a shallow pan, chill 2-3 hrs until firm, then cube.</li>
+          <li>Bloom the unflavored gelatin in a splash of cold water, dissolve gently, whisk into the condensed milk with a splash of vodka.</li>
+          <li>Drop cubes into small cups, pour the white mixture over, chill 1-2 hrs until set.</li>
+        </ol>
+      </div>
+
+      <div class="recipe-card">
+        <h4>4 — Espresso Float</h4>
+        <ul>
+          <li>1.5 oz vodka</li>
+          <li>1 oz coffee liqueur</li>
+          <li>1 oz strong instant decaf, chilled</li>
+          <li>1 scoop vanilla or cinnamon ice cream</li>
+        </ul>
+        <ol>
+          <li>Dissolve 1-2 tsp instant decaf in a splash of hot water, let cool completely.</li>
+          <li>Scoop ice cream into a coupe or rocks glass.</li>
+          <li>Shake vodka, coffee liqueur, and cooled decaf hard with ice.</li>
+          <li>Pour over the ice cream tableside so it foams up like a float.</li>
+        </ol>
+      </div>
+    </div>
+
+    <button class="host-toggle" id="host-toggle" onclick="toggleHostPanel()">→ Host Results</button>
+
+    <div class="host-panel" id="host-panel">
+      <div class="pw-box" id="pw-box">
+        <input type="password" id="pw-input" placeholder="Password" autocomplete="off">
+        <button onclick="checkPassword()">Enter</button>
+        <div class="pw-error" id="pw-error">Wrong password, try again.</div>
+      </div>
+
+      <div id="dashboard">
+        <div class="leader-banner" id="leader-banner">— waiting for ratings —</div>
+
+        <div class="drink-block">
+          <h4>Hugo Spritz</h4>
+          <div class="stat-row"><span class="stat-label">Tasted</span><span class="stat-value tried" id="d-tried-1">0</span></div>
+          <div class="stat-row"><span class="stat-label">Avg Rating</span><span class="stat-value avg" id="d-avg-1">—</span></div>
+          <div class="totals"><span id="d-count-1">0</span> ratings submitted</div>
+        </div>
+
+        <div class="drink-block">
+          <h4>Green Card Margarita</h4>
+          <div class="stat-row"><span class="stat-label">Tasted</span><span class="stat-value tried" id="d-tried-2">0</span></div>
+          <div class="stat-row"><span class="stat-label">Avg Rating</span><span class="stat-value avg" id="d-avg-2">—</span></div>
+          <div class="totals"><span id="d-count-2">0</span> ratings submitted</div>
+        </div>
+
+        <div class="drink-block">
+          <h4>Firework Cubes</h4>
+          <div class="stat-row"><span class="stat-label">Tasted</span><span class="stat-value tried" id="d-tried-3">0</span></div>
+          <div class="stat-row"><span class="stat-label">Avg Rating</span><span class="stat-value avg" id="d-avg-3">—</span></div>
+          <div class="totals"><span id="d-count-3">0</span> ratings submitted</div>
+        </div>
+
+        <div class="drink-block">
+          <h4>Espresso Float</h4>
+          <div class="stat-row"><span class="stat-label">Tasted</span><span class="stat-value tried" id="d-tried-4">0</span></div>
+          <div class="stat-row"><span class="stat-label">Avg Rating</span><span class="stat-value avg" id="d-avg-4">—</span></div>
+          <div class="totals"><span id="d-count-4">0</span> ratings submitted</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Cheers, From The Whole Crew</footer>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDDSXT1yGpgKljknK909sv0l1QU-gsG26Y",
+    authDomain: "celly-dranks.firebaseapp.com",
+    databaseURL: "https://celly-dranks-default-rtdb.firebaseio.com",
+    projectId: "celly-dranks",
+    storageBucket: "celly-dranks.firebasestorage.app",
+    messagingSenderId: "436870635220",
+    appId: "1:436870635220:web:1f53d59e80339735b32541"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const PASSWORD = "parmy";
+  const names = {1:"Hugo Spritz", 2:"Green Card Margarita", 3:"Firework Cubes", 4:"Espresso Float"};
+  const countedStamps = {};
+  const guestId = 'g' + Math.random().toString(36).substring(2, 10);
+  const myRatings = {};
+
+  // build rating buttons 1-5 for each drink
+  for(let d=1; d<=4; d++){
+    const row = document.getElementById('rate-'+d);
+    for(let n=1; n<=5; n++){
+      const btn = document.createElement('button');
+      btn.className = 'rate-btn';
+      btn.textContent = n;
+      btn.onclick = () => submitRating(d, n);
+      row.appendChild(btn);
+    }
+  }
+
+  function toggleStamp(n){
+    const card = document.getElementById('card-'+n);
+    const stamp = document.getElementById('stamp-'+n);
+    const btn = card.querySelector('.stamp-btn');
+    const isOn = stamp.classList.contains('on');
+
+    if(!isOn){
+      stamp.classList.add('on');
+      card.classList.add('stamped');
+      btn.classList.add('done');
+      btn.textContent = 'Stamped ✓';
+
+      if(!countedStamps[n]){
+        countedStamps[n] = true;
+        db.ref('tried/'+n).transaction(cur => (cur||0)+1);
+      }
+    } else {
+      stamp.classList.remove('on');
+      card.classList.remove('stamped');
+      btn.classList.remove('done');
+      btn.textContent = 'Stamp It';
+    }
+    updateProgress();
+  }
+
+  function updateProgress(){
+    const total = 4;
+    let count = 0;
+    for(let i=1;i<=total;i++){
+      if(document.getElementById('stamp-'+i).classList.contains('on')) count++;
+    }
+    document.getElementById('progress-count').textContent = count;
+    document.getElementById('bar-fill').style.width = (count/total*100)+'%';
+    document.getElementById('complete-msg').style.display = (count===total) ? 'block' : 'none';
+  }
+
+  // live "people have tried this" counters
+  for(let i=1;i<=4;i++){
+    db.ref('tried/'+i).on('value', snap => {
+      document.getElementById('live-'+i).textContent = snap.val() || 0;
+    });
+  }
+
+  function submitRating(drinkId, rating){
+    myRatings[drinkId] = rating;
+    db.ref('ratings/'+drinkId+'/'+guestId).set(rating);
+
+    const row = document.getElementById('rate-'+drinkId);
+    Array.from(row.children).forEach((btn, idx) => {
+      btn.classList.toggle('selected', (idx+1) === rating);
+    });
+    document.getElementById('yr-'+drinkId).textContent = 'Your rating: ' + rating + ' / 5';
+  }
+
+  function toggleHostPanel(){
+    const panel = document.getElementById('host-panel');
+    panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
+  }
+
+  function checkPassword(){
+    const val = document.getElementById('pw-input').value;
+    if(val === PASSWORD){
+      document.getElementById('pw-box').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      initDashboard();
+    } else {
+      document.getElementById('pw-error').style.display = 'block';
+    }
+  }
+
+  document.getElementById('pw-input').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') checkPassword();
+  });
+
+  let dashboardInit = false;
+  function initDashboard(){
+    if(dashboardInit) return;
+    dashboardInit = true;
+
+    for(let i=1;i<=4;i++){
+      db.ref('tried/'+i).on('value', snap => {
+        document.getElementById('d-tried-'+i).textContent = snap.val() || 0;
+      });
+    }
+
+    for(let i=1;i<=4;i++){
+      db.ref('ratings/'+i).on('value', snap => {
+        const data = snap.val() || {};
+        const vals = Object.values(data);
+        const count = vals.length;
+        const avg = count > 0 ? (vals.reduce((a,b)=>a+b,0) / count) : 0;
+
+        document.getElementById('d-avg-'+i).textContent = count > 0 ? avg.toFixed(1) + ' / 5' : '—';
+        document.getElementById('d-count-'+i).textContent = count;
+
+        updateLeaderBanner();
+      });
+    }
+  }
+
+  function updateLeaderBanner(){
+    let leaderId = null, leaderAvg = -1, anyRatings = false;
+    for(let i=1;i<=4;i++){
+      const txt = document.getElementById('d-avg-'+i).textContent;
+      if(txt === '—') continue;
+      anyRatings = true;
+      const val = parseFloat(txt);
+      if(val > leaderAvg){ leaderAvg = val; leaderId = i; }
+    }
+    const banner = document.getElementById('leader-banner');
+    banner.textContent = anyRatings ? ('✦ Currently in the lead: ' + names[leaderId] + ' (' + leaderAvg.toFixed(1) + '/5) ✦') : '— waiting for ratings —';
+  }
+</script>
+
+</body>
+</html>
